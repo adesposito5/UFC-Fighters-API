@@ -4,7 +4,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import type { FighterStatus } from '../generated/prisma/enums';
+import type { FighterStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFighterDto } from './dto/create-fighter.dto';
 import { UpdateFighterDto } from './dto/update-fighter.dto';
