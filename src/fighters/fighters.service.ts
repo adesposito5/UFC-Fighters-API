@@ -2,7 +2,9 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
+import type { FighterStatus } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateFighterDto } from './dto/create-fighter.dto';
 import { UpdateFighterDto } from './dto/update-fighter.dto';
@@ -64,6 +66,30 @@ export class FightersService {
         reachCm,
       },
     });
+  }
+
+  async changeStatus(
+    id: string,
+    ownerId: string,
+    newStatus: FighterStatus,
+  ): Promise<FighterStatus> {
+    const fighter = await this.findOne(id, ownerId);
+
+    if (fighter.deletedAt) {
+      throw new ConflictException('Deleted fighters cannot change status');
+    }
+
+    const allowedTransitions: Record<FighterStatus, FighterStatus[]> = {
+      ACTIVE: ['SUSPENDED', 'RETIRED'],
+      SUSPENDED: ['ACTIVE'],
+      RETIRED: ['ACTIVE'],
+    };
+
+    if (!allowedTransitions[fighter.status].includes(newStatus)) {
+      throw new UnprocessableEntityException('Invalid fighter status transition');
+    }
+
+    return newStatus;
   }
 
   remove(id: number) {
