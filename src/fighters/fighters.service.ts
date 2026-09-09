@@ -72,7 +72,8 @@ export class FightersService {
     id: string,
     ownerId: string,
     newStatus: FighterStatus,
-  ): Promise<FighterStatus> {
+    reason?: string,
+  ) {
     const fighter = await this.findOne(id, ownerId);
 
     if (fighter.deletedAt) {
@@ -84,12 +85,53 @@ export class FightersService {
       SUSPENDED: ['ACTIVE'],
       RETIRED: ['ACTIVE'],
     };
+    const currentStatus: FighterStatus = fighter.status;
 
-    if (!allowedTransitions[fighter.status].includes(newStatus)) {
+    if (!allowedTransitions[currentStatus].includes(newStatus)) {
       throw new UnprocessableEntityException('Invalid fighter status transition');
     }
 
-    return newStatus;
+    if (newStatus === 'SUSPENDED' && !reason?.trim()) {
+      throw new UnprocessableEntityException(
+        'A reason is required when suspending a fighter',
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const transaction = tx as PrismaService;
+      const now = new Date();
+      const updatedFighter = await transaction.fighter.update({
+        where: { id },
+        data: { status: newStatus },
+      });
+
+      if (newStatus === 'SUSPENDED') {
+        await transaction.suspensionRecord.create({
+          data: {
+            fighterId: id,
+            reason: reason!,
+            suspendedAt: now,
+            liftedAt: null,
+          },
+        });
+      } else if (currentStatus === 'SUSPENDED' && newStatus === 'ACTIVE') {
+        const activeSuspension = await transaction.suspensionRecord.findFirst({
+          where: {
+            fighterId: id,
+            liftedAt: null,
+          },
+        });
+
+        if (activeSuspension) {
+          await transaction.suspensionRecord.update({
+            where: { id: activeSuspension.id },
+            data: { liftedAt: now },
+          });
+        }
+      }
+
+      return updatedFighter;
+    });
   }
 
   remove(id: number) {
