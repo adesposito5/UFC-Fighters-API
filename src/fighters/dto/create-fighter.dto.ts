@@ -6,7 +6,7 @@ import {
 	IsPositive,
 	IsString,
 } from 'class-validator';
-import { WeightClass } from '../../generated/prisma/enums';
+import { WeightClass } from '@prisma/client';
 
 export class CreateFighterDto {
 	@IsString()
