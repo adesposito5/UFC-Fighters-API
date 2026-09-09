@@ -1,0 +1,60 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WeightClass {
+  FLYWEIGHT
+  BANTAMWEIGHT
+  FEATHERWEIGHT
+  LIGHTWEIGHT
+  WELTERWEIGHT
+  MIDDLEWEIGHT
+  LIGHT_HEAVYWEIGHT
+  HEAVYWEIGHT
+}
+
+enum FighterStatus {
+  ACTIVE
+  SUSPENDED
+  RETIRED
+}
+
+model Fighter {
+  id               String             @id @default(uuid())
+  name             String
+  nickname         String?
+  weightClass      WeightClass
+  wins              Int              @default(0)
+  losses            Int              @default(0)
+  draws             Int              @default(0)
+  nationality      String
+  status           FighterStatus      @default(ACTIVE)
+  reachCm          Int?
+  ownerId          String
+  deletedAt        DateTime?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  suspensionRecords SuspensionRecord[]
+}
+
+model SuspensionRecord {
+  id         String   @id @default(uuid())
+  fighterId  String
+  reason     String
+  suspendedAt DateTime @default(now())
+  liftedAt   DateTime?
+  createdAt  DateTime @default(now())
+  fighter    Fighter  @relation(fields: [fighterId], references: [id])
+}
